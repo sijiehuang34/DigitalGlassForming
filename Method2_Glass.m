@@ -18,6 +18,7 @@ gray_img = im2gray(img);
 % Binarize (retains top side of the punch only)
 bw = imbinarize(gray_img,"adaptive"); 
 
+
 % Denoise (removes small objects)
 minSize = 2100;
 bw = bwareaopen(bw,minSize);
@@ -34,7 +35,9 @@ bw(1:1175, 1:1224) = 0;
 minSize = 150;
 bw = bwareaopen(bw,minSize);
 
+% Overlay on processed image
 imshow(bw)
+% % Overlay on original image
 % imshow(img)
 
 %--------------------------------------------------------------------------
@@ -76,6 +79,13 @@ for iCol = 1:totalCol
         end
     end
 end
+
+%--------------------------------------------------------------------------
+
+% % Make the background white
+% bw(bw == 0) = 1;
+% imshow(bw)
+% hold on;
 
 %--------------------------------------------------------------------------
 
@@ -148,5 +158,61 @@ while i <= length(lowest_Points)-20
     % Increment loop index
     i = i + 20;
 end
+
+%--------------------------------------------------------------------------
+
+% Find appropriate points
+
+% Top vertex 
+x1 = 1750; % manual
+y1 = 1150; % manual
+plot(x1, y1, 'gx', 'MarkerSize', 10, "LineWidth", 2);
+
+% Left vertex
+pxConv = 90; % 1mm = 80px (Images saved is shrunk by approximately 2x)
+triangleDim = 7 * pxConv; 
+x2 = x1 - triangleDim;
+y2 = y1 + triangleDim;
+plot(x2, y2, 'gx', 'MarkerSize', 10, "LineWidth", 2);
+
+% Right vertex
+x3 = x1 + triangleDim;
+y3 = y1 + triangleDim;
+plot(x3, y3, 'gx', 'MarkerSize', 10, "LineWidth", 2);
+
+% Left tail
+tailLength = 2 * triangleDim / 7; % according to the 2mm : 7mm ratio
+x4 = x2 - tailLength;
+y4 = y2;
+plot(x4, y4, 'gx', 'MarkerSize', 10, "LineWidth", 2);
+
+% Right tail
+x5 = x3 + tailLength;
+y5 = y3;
+plot(x5, y5, 'gx', 'MarkerSize', 10, "LineWidth", 2);
+
+%--------------------------------------------------------------------------
+
+% % Line up the vertices
+% 
+% % Left line
+% xArray1 = [x1, x2];
+% yArray1 = [y1, y2];
+% line(xArray1, yArray1, 'Color', 'g', 'LineWidth', 2);
+% 
+% % Right line
+% xArray2 = [x1, x3];
+% yArray2 = [y1, y3];
+% line(xArray2, yArray2, 'Color', 'g', 'LineWidth', 2);
+% 
+% % Left tailing line
+% xArray3 = [x2, x4];
+% yArray3 = [y2, y4];
+% line(xArray3, yArray3, 'Color', 'g', 'LineWidth', 2);
+% 
+% % Right tailing line
+% xArray4 = [x3, x5];
+% yArray4 = [y3, y5];
+% line(xArray4, yArray4, 'Color', 'g', 'LineWidth', 2);
 
 hold off;
