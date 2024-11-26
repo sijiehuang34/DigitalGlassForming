@@ -1,0 +1,130 @@
+    //////////////////////////////// Load image in grayscale ////////////////////////////////
+    // Mat image;
+    // image = imread("C:/Users/Cindy Huang/projects/FeederUnpainted_LightTop_BlackBg.jpg", IMREAD_GRAYSCALE);
+
+    // if (image.empty()) {
+    //     std::cerr << "Could not read the image!" << std::endl;
+    //     return -1;
+    // }
+    ///////////////////////// Adaptive thresholding ////////////////////////////////////////
+    // Mat blurred;
+    // GaussianBlur(image, blurred, Size(5, 5), 0);
+
+    // Mat binary;
+    // adaptiveThreshold(blurred, binary, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 401, -1); 
+    // // Block Size 501: determines the size of the region used for calculating the threshold
+    // // ^^^At least 5% of column/row size --> 501
+    // // Constant: subtracted from the weighted mean (fine-tuning)
+    // // ^^^Keep it <= 0 to keep the white area grainy (easier noise reduction by connected area)
+
+    //////////////////////////////// Noise reduction ///////////////////////////////////////
+    // Mat labels;
+    // int nLabels = connectedComponents(binary, labels);
+    // Mat denoised = Mat::zeros(binary.size(), CV_8UC1);
+    // for (int label = 1; label < nLabels; ++label) {
+    //     Mat componentMask = (labels == label);
+    //     // Calculate the area (number of pixels) of the component
+    //     int componentArea = countNonZero(componentMask);
+    //     // Remove components that are smaller than a defined threshold (considered noise)
+    //     if (componentArea > 3000) { 
+    //         denoised.setTo(255, componentMask);
+    //     }
+    // }
+
+    /////////////////////////////// Fill Gaps //////////////////////////////////////////////
+    // Mat filledImg = denoised.clone();
+    // int totalRows = filledImg.rows;
+    // int totalCols = filledImg.cols;
+
+    // for (int row = 0; row < totalRows; row++) {
+    //     int leftEdge = -1;  // Store the column index of the left edge
+    //     int rightEdge = -1; // Store the column index of the right edge
+
+    //     // Scan from left to right to find the left edge
+    //     for (int col = 0; col < totalCols; ++col) {
+    //         if (filledImg.at<uchar>(row, col) == 255) {  // If a white pixel is found
+    //             leftEdge = col;
+    //             break;
+    //         }
+    //     }
+
+    //     // Scan from right to left to find the right edge
+    //     for (int col = totalCols - 1; col >= 0; --col) {
+    //         if (filledImg.at<uchar>(row, col) == 255) {  // If a white pixel is found
+    //             rightEdge = col;
+    //             break;
+    //         }
+    //     }
+
+    //     // If both left and right edges are found, fill the gap between them with white pixels
+    //     if (leftEdge != -1 && rightEdge != -1 && rightEdge > leftEdge) {
+    //         for (int col = leftEdge; col <= rightEdge; ++col) {
+    //             filledImg.at<uchar>(row, col) = 255;  // Set the pixel to white
+    //         }
+    //     }
+    // }
+
+    //////////////////////////////////// Segmentation ///////////////////////////////////////
+    // // Perform the distance transform algorithm
+    // Mat dist;
+    // distanceTransform(filledImg, dist, DIST_L2, 3);
+    // // Normalize the distance image for range = {0.0, 1.0}
+    // // so we can visualize and threshold it
+    // normalize(dist, dist, 0, 1.0, NORM_MINMAX);
+
+    // // Threshold to obtain the peaks
+    // // This will be the markers for the foreground objects
+    // threshold(dist, dist, 0.4, 1.0, THRESH_BINARY);
+    // // Dilate a bit the dist image
+    // Mat kernel1 = Mat::ones(3, 3, CV_8U);
+    // dilate(dist, dist, kernel1);
+
+    ///////////////////////////////Commented Out////////////////////////////////////////////
+
+    // // Create the CV_8U version of the distance image
+    // // It is needed for findContours()
+    // Mat dist_8u;
+    // dist.convertTo(dist_8u, CV_8U);
+    // // Find total markers
+    // std::vector<std::vector<Point> > contours;
+    // findContours(dist_8u, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    // // Create the marker image for the watershed algorithm
+    // Mat markers = Mat::zeros(dist.size(), CV_32S);
+    // // Draw the foreground markers
+    // for (size_t i = 0; i < contours.size(); i++)
+    // {
+    //     drawContours(markers, contours, static_cast<int>(i), Scalar(static_cast<int>(i)+1), -1);
+    // }
+    // // Draw the background marker
+    // circle(markers, Point(5,5), 3, Scalar(255), -1);
+    // Mat markers8u;
+    // markers.convertTo(markers8u, CV_8U, 10);
+
+    //////////////////////////////////// Find contours //////////////////////////////////////
+    // std::vector<std::vector<cv::Point>> contours;
+    // std::vector<cv::Vec4i> hierarchy;
+    // findContours(filledImg, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+    // // Draw the contours
+    // // Mat imageWithContours = filledImg.clone();
+    // Mat contourImg;
+    // cvtColor(filledImg, contourImg, COLOR_GRAY2BGR);
+    // drawContours(contourImg, contours, -1, Scalar(0, 0, 255), 2);
+
+    //////////////////////////////// Display image////////////////////////////////////////
+    // namedWindow("binary w/ constant = -1",  WINDOW_NORMAL); 
+    // imshow("binary w/ constant = -1", binary);
+    // namedWindow("denoised",  WINDOW_NORMAL); 
+    // imshow("denoised", denoised);
+    // namedWindow("filled",  WINDOW_NORMAL); 
+    // imshow("filled", filledImg);
+    // namedWindow("dist",  WINDOW_NORMAL); 
+    // imshow("dist", dist);
+    // // namedWindow("markers",  WINDOW_NORMAL); 
+    // // imshow("markers", markers8u);
+    // namedWindow("contour",  WINDOW_NORMAL); 
+    // imshow("contour", contourImg);
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    // waitKey(0);
