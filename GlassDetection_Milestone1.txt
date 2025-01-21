@@ -1,0 +1,191 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <stdio.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core/hal/interface.h>
+#include <filesystem>
+#include <cmath>
+
+#define CV_32S 4
+
+using namespace cv;
+
+void clearTerminal() {
+    system("cls"); 
+}
+
+int main(int argc, char** argv) {
+    // Load image
+    std::string imagePath = "C:/Users/Cindy Huang/projects/visCam_Exp8_denoised/denoised_90.png";
+    std::string outputFolder = "C:/Users/Cindy Huang/projects/processed_frames/";
+    cv::Mat denoised = cv::imread(imagePath, cv::IMREAD_GRAYSCALE);
+    if (denoised.empty()) {
+        std::cerr << "Error: Could not load the image at " << imagePath << std::endl;
+        return -1;
+    }
+
+    // Find left edge
+    std::cout << "Finding left edge..." << std::endl;
+    std::vector<cv::Point> leftEdgePoints;
+    for (int row = 0; row < denoised.rows; ++row) {
+        for (int col = 0; col < denoised.cols; ++col) { // Start from the left end
+            if (denoised.at<uchar>(row, col) == 255) {
+                // Save the current point
+                cv::Point currentPoint(col, row);
+                bool shouldStorePoint = true;
+                // Line continuity check
+                if (!leftEdgePoints.empty()) {
+                    const cv::Point& previousPoint = leftEdgePoints.back();
+                    int deltaX = std::abs(currentPoint.x - previousPoint.x);
+                    int deltaY = std::abs(currentPoint.y - previousPoint.y);
+
+                    // Check if the differences satisfy the threshold condition
+                    if (deltaX >= 10 || deltaY >= 10) {
+                        shouldStorePoint = false; // Do not store if either deltaX or deltaY is 10 or more
+                    }
+                }
+                // Store the point if it meets the condition
+                if (shouldStorePoint) {
+                    leftEdgePoints.push_back(currentPoint);
+                }
+                break; // Stop searching in this row after the first white point is found
+            }
+        }
+    }
+
+    // Find right edge
+    std::cout << "Finding right edge..." << std::endl;
+    std::vector<cv::Point> rightEdgePoints;
+    for (int row = 0; row < denoised.rows; ++row) {
+        for (int col = denoised.cols - 1; col >= 0; --col) { // Start from the right end
+            if (denoised.at<uchar>(row, col) == 255) {
+                // Save the current point
+                cv::Point currentPoint2(col, row);
+                bool shouldStorePoint2 = true;
+                // Line continuity check - calculate differences from the previous point if it exists
+                if (!rightEdgePoints.empty()) {
+                    const cv::Point& previousPoint2 = rightEdgePoints.back();
+                    int deltaX = std::abs(currentPoint2.x - previousPoint2.x);
+                    int deltaY = std::abs(currentPoint2.y - previousPoint2.y);
+
+                    // Check if the differences satisfy the threshold condition
+                    if (deltaX >= 10 || deltaY >= 10) {
+                        shouldStorePoint2 = false; // Do not store if either deltaX or deltaY is 10 or more
+                    }
+                }
+            // Store the point if it meets the condition
+            if (shouldStorePoint2) {
+                rightEdgePoints.push_back(currentPoint2);
+            }
+            break; // Stop searching in this row after the first white point is found
+            }
+        }
+    }
+
+    // Find the leftmost x value of LHS
+    std::cout << "Finding leftmost x value from left edge points..." << std::endl;
+    int leftmostX = std::numeric_limits<int>::max();
+    for (const auto& point : leftEdgePoints) {
+        if (point.x < leftmostX) {
+            leftmostX = point.x;
+        }
+    }
+
+    // Find the leftfmost x value of RHS
+    std::cout << "Finding leftmost x value from right edge points..." << std::endl;
+    int bottomRefX = std::numeric_limits<int>::max();
+    for (const auto& point : rightEdgePoints) {
+        if (point.x < bottomRefX) {
+            bottomRefX = point.x;
+        }
+    }
+
+    // // Calculate the average x value for rightEdgePoints
+    // double bottomRefX = 0.0;
+    // if (!rightEdgePoints.empty()) {
+    //     for (const auto& point : rightEdgePoints) {
+    //         bottomRefX += point.x;
+    //     }
+    //     bottomRefX /= rightEdgePoints.size();
+    // }
+    // std::cout << "Average x value of rightEdgePoints (bottomRefX): " << bottomRefX << std::endl;
+
+
+    // Find column edge points to the left of the leftmost x
+    std::cout << "Finding column edge points to the left of the leftmost x value..." << std::endl;
+    std::vector<cv::Point> columnEdgePointsLeft;
+    for (int col = 0; col < leftmostX; ++col) { // Only process columns to the left of leftmost x
+        for (int row = 0; row < denoised.rows; ++row) {
+            if (denoised.at<uchar>(row, col) == 255) {
+                columnEdgePointsLeft.emplace_back(col, row); // Save the point
+                break; // Stop searching in this column after the first white point is found
+            }
+        }
+    }
+
+    // Find column edge points to the right of the rightmost x
+    std::cout << "Finding column edge points to the right of the rightmost x value..." << std::endl;
+    std::vector<cv::Point> columnEdgePointsRight;
+    for (int col = bottomRefX; col < denoised.cols*0.9; ++col) { // Only process columns to the right of rightmost x
+        for (int row = 0; row < denoised.rows; ++row) {
+            if (denoised.at<uchar>(row, col) == 255) {
+                columnEdgePointsRight.emplace_back(col, row); // Save the point
+                break; // Stop searching in this column after the first white point is found
+            }
+        }
+    }
+
+    // Find the largest y value for columnEdgePointsRight
+    double bottomRefY = 0.0;
+    if (!columnEdgePointsRight.empty()) {
+        bottomRefY = columnEdgePointsRight[0].y; // Initialize with the first point's y value
+        for (const auto& point : columnEdgePointsRight) {
+            if (point.y > bottomRefY) {
+                bottomRefY = point.y; // Update to the maximum y value found
+            }
+        }
+    }
+    std::cout << "Maximum y value of columnEdgePointsRight (bottomRefY): " << bottomRefY << std::endl;
+
+    // Find points at bottomRefY and to the left of bottomRefX
+    std::vector<cv::Point> bottomSidePoints;
+    for (int col = 0; col < bottomRefX; ++col) { // Iterate through columns to the left of bottomRefX
+        if (denoised.at<uchar>(bottomRefY, col) == 255) { // Check if the pixel is white
+            bottomSidePoints.emplace_back(col, bottomRefY); // Save the point
+        }
+    }
+
+    // Mark the points
+    cv::Mat colorImage;
+    cv::cvtColor(denoised, colorImage, cv::COLOR_GRAY2BGR);
+
+    // Combine all edge points
+    std::vector<cv::Point> allEdgePoints = leftEdgePoints;
+    allEdgePoints.insert(allEdgePoints.end(), rightEdgePoints.begin(), rightEdgePoints.end());
+    allEdgePoints.insert(allEdgePoints.end(), columnEdgePointsLeft.begin(), columnEdgePointsLeft.end());
+    allEdgePoints.insert(allEdgePoints.end(), bottomSidePoints.begin(), bottomSidePoints.end());
+
+    for (const auto& point : allEdgePoints) {
+        cv::circle(colorImage, point, 3, cv::Scalar(0, 0, 255), -1);
+    }
+
+    // Save the result to the output folder
+    std::string outputPath = outputFolder + "processed_90_testing.png";
+    if (!cv::imwrite(outputPath, colorImage)) {
+        std::cerr << "Error: Could not save the image to " << outputPath << std::endl;
+        return -1;
+    }
+
+    std::cout << "Processed image saved to: " << outputPath << std::endl;
+
+    return 0;
+}
+
+
+
+
+
+
+
