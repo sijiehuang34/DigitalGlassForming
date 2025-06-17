@@ -4,13 +4,13 @@ clc; clear; close all;
 
 %% User Input
 expName = 'E:\SFF\Exp2_MeasuringTracks_DiffStartsStops\';
-expCase = '3_ConstantLaserPower_50W_0o5mms_fp_7mm\';
+expCase = '1_ConstantLaserPower_40W_0o5mms_fp_7mm\';
 imageDir = [expName, expCase, 'images\'];
 substrate_start_row = 1350;
 known_hypodermic_depth = 400; % px
 one_px = 12.446e-6; % m
 
-frameRange = 400:10:1000;
+frameRange = 425:10:1195;
 results = table('Size', [0 3], 'VariableTypes', {'double', 'cell', 'cell'}, ...
                 'VariableNames', {'Frame', 'Z_vis', 'X_vis'});
 
@@ -52,7 +52,7 @@ for frame = frameRange
 
     distance_bg1 = sqrt((a_channel - bg1_a).^2 + (b_channel - bg1_b).^2);
     distance_bg2 = sqrt((a_channel - bg2_a).^2 + (b_channel - bg2_b).^2);
-    threshold = 10;
+    threshold = 7;
 
     bg_mask_1 = distance_bg1 < threshold;
     bg_mask_2 = distance_bg2 < threshold;
@@ -61,7 +61,7 @@ for frame = frameRange
     object_mask = ~bg_mask_1 & ~bg_mask_2 & ~substrate_mask;
 
     bw = uint8(object_mask) * 255;
-    minSize = 2000;
+    minSize = 40000;
     bw = bwareaopen(bw, minSize);
     bw = imfill(bw, 'holes');
 
@@ -103,7 +103,7 @@ for frame = frameRange
     X_vis = boundary(:,1); % px
 
     % Filter 2: remove those belonging to work zone (unstable yet)
-    validIdx = X_vis >= 850;
+    validIdx = X_vis >= 700;
     X_vis = X_vis(validIdx);
     Z_vis = Z_vis(validIdx);
 
